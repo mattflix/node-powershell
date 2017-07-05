@@ -36,7 +36,16 @@ var IS_WIN = os.platform() === 'win32';
 var MODULE_MSG = colors.bold.blue('NPS> ');
 var OK_MSG = colors.green;
 var ERROR_MSG = colors.red;
-var EOI = 'EOI';
+
+// OLD
+// The string "EOI" may appear in legitimate shell output.
+// Something more unique should be used.  Perhaps a GUID?
+// var EOI = 'EOI';
+// END
+
+// NEW
+var EOI = '24893a60-b2be-4ba4-b70c-7714a7d8d1f2';
+// END
 
 /**
  * The Shell class.
@@ -103,7 +112,18 @@ var Shell = exports.Shell = function (_eventEmitter) {
     var _type = '_resolve';
 
     _this._proc.stdout.on('data', function (data) {
-      if (data.indexOf(EOI) !== -1) {
+      // BEGN OLD
+      // if (data.indexOf(EOI) !== -1) {
+      // END OLD
+
+      // BEGIN NEW
+      var eoi = data.indexOf(EOI);
+      if (eoi !== -1) {
+        data = data.substr(0, eoi);
+        _this.emit('output', data);
+        _output.push(data);
+      // END NEW
+
         _this.emit(_type, _output.join(''));
         _output = [];
         _type = '_resolve';
@@ -246,6 +266,12 @@ var Shell = exports.Shell = function (_eventEmitter) {
       var _self = this;
       return new Promise(function (resolve, reject) {
         var _cmdsStr = _self._cmds.join('; ');
+       
+        // NEW
+        // To avoid races, the commands array should be cleared up-front, here:
+        _self._cmds = [];
+        // END
+       
         _self.__print__(OK_MSG, 'Command invoke started');
         _self._cfg.debugMsg && console.log(' ' + colors.gray(_cmdsStr));
 
@@ -262,7 +288,11 @@ var Shell = exports.Shell = function (_eventEmitter) {
         function reset() {
           _self.removeListener('_resolve', resolve_listener);
           _self.removeListener('_reject', reject_listener);
-          _self._cmds = [];
+
+          // OLD
+          // Clearing it here (the current code) is way too late and creates race conditions.
+          // _self._cmds = [];
+          // END
         }
 
         _self.on('_resolve', resolve_listener);
